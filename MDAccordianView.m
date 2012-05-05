@@ -37,16 +37,18 @@
 @interface MDAccordianFoldView : UIView {
     UIImageView *backgroundImage;
     UIImageView *shadeImage;
+    UIImageView *secondaryShadeImage;
 }
 
 @property (nonatomic, strong) UIImageView *backgroundImage;
 @property (nonatomic, strong) UIImageView *shadeImage;
+@property (nonatomic, strong) UIImageView *secondaryShadeImage;
 
 @end
 
 @implementation MDAccordianFoldView
 
-@synthesize backgroundImage, shadeImage;
+@synthesize backgroundImage, shadeImage, secondaryShadeImage;
 
 - (id)initWithFrame:(CGRect)frame
 {
@@ -57,6 +59,9 @@
         shadeImage = [[UIImageView alloc] initWithFrame:self.bounds];
         [self addSubview:shadeImage];
         shadeImage.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        secondaryShadeImage = [[UIImageView alloc] initWithFrame:self.bounds];
+        [self addSubview:secondaryShadeImage];
+        secondaryShadeImage.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         
         self.clipsToBounds = YES;
     }
@@ -90,7 +95,7 @@
         self.numberOfFolds = folds;
         
         CATransform3D perspectiveTransform = CATransform3DIdentity;
-        perspectiveTransform.m34 = 1.0 / -1000;
+        perspectiveTransform.m34 = 1.0 / -850;
         self.layer.sublayerTransform = perspectiveTransform;
     }
     return self;
@@ -108,15 +113,27 @@
     
     NSUInteger totalFolds = (numberOfFolds+1)*2;
     CGFloat foldHeight = naturalSize.height/totalFolds;
+    BOOL flipped = NO;
     
     for (NSUInteger i = 0; i < totalFolds; i++) {
-        MDAccordianFoldView *fold = [[MDAccordianFoldView alloc] initWithFrame:CGRectMake(0, i*foldHeight, self.bounds.size.width, foldHeight)];
-        fold.backgroundColor = [UIColor greenColor];
-        fold.backgroundImage.frame = CGRectMake(0, -i*foldHeight, self.bounds.size.width, foldHeight);
+        MDAccordianFoldView *fold = [[MDAccordianFoldView alloc] initWithFrame:CGRectMake(0, i*foldHeight, self.bounds.size.width, foldHeight+5)];
+        
+        if (!flipped) {
+            fold.frame = CGRectMake(0, i*foldHeight, self.bounds.size.width, foldHeight+5);
+            fold.backgroundImage.frame = CGRectMake(0, -foldHeight*i, self.bounds.size.width, naturalSize.height);
+            fold.shadeImage.backgroundColor = [UIColor blackColor];
+        } else {
+            fold.frame = CGRectMake(0, i*foldHeight-5, self.bounds.size.width, foldHeight+5);
+            fold.backgroundImage.frame = CGRectMake(0, -foldHeight*i+5, self.bounds.size.width, naturalSize.height);
+            fold.shadeImage.backgroundColor = [UIColor whiteColor];
+            fold.secondaryShadeImage.backgroundColor = [UIColor blackColor];
+        }
+        
         [self insertSubview:fold atIndex:0];
         [foldViews addObject:fold];
         
         fold.layer.anchorPoint = CGPointMake(0.5, i%2);
+        flipped = !flipped;
     }
     
     [self generateCachedImage];
@@ -165,19 +182,28 @@
         
         NSUInteger index = 0;
         
+        CGFloat fraction = fabsf(self.frame.size.height/naturalSize.height);
+        
+        
+        NSUInteger totalFolds = (numberOfFolds+1)*2;
+        CGFloat foldHeight = naturalSize.height/totalFolds;
+        
         for (MDAccordianFoldView *fold in foldViews) {
-            CGFloat oposite = self.frame.size.height/foldViews.count;
-            CGFloat hypotenus = fold.bounds.size.height;
-            CGFloat adjacent = sqrtf(hypotenus*hypotenus - ceilf(oposite+1)*ceilf(oposite+1));
+            CGFloat oposite = self.frame.size.height/totalFolds;
+            CGFloat hypotenus = foldHeight;
+            CGFloat adjacent = sqrtf(hypotenus*hypotenus - oposite*oposite);
             
-            fold.layer.bounds = CGRectMake(0, 0, self.frame.size.width, fold.bounds.size.height);
+            fold.layer.bounds = CGRectMake(0, 0, self.frame.size.width, foldHeight+5);
             
             if (!flipped) {
                 fold.layer.transform = CATransform3DMakeRotation(-M_PI_2+atanf(oposite/adjacent), 1, 0, 0);
                 fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*floorf(index/2.)));
+                fold.shadeImage.alpha = 0.7*(1.-fraction);
             } else {
                 fold.layer.transform = CATransform3DMakeRotation(M_PI_2-atanf(oposite/adjacent), 1, 0, 0);
                 fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*ceilf(index/2.)));
+                fold.shadeImage.alpha = 0.1*(1.-fraction);
+                fold.secondaryShadeImage.alpha = 0.5*(1.-2.*fraction);
             }
             
             flipped = !flipped;
