@@ -33,6 +33,22 @@
 
 #import <UIKit/UIKit.h>
 
-@interface MDAccordianView : UIView
+@interface MDAccordianView : UIView {
+    NSUInteger numberOfFolds;
+    CGSize naturalSize;
+    
+    NSMutableArray *foldViews;
+    UIView *contentView;
+    
+    UIImage *cachedImage;
+    
+    BOOL generatedImage;
+}
+
+@property (nonatomic) CGSize naturalSize;
+@property (readonly, nonatomic) NSUInteger numberOfFolds;
+@property (nonatomic, strong) UIView *contentView; // don't add subviews directly!! set this or add to this instead
+
+- (id)initWithFrame:(CGRect)frame folds:(NSUInteger)folds;
 
 @end

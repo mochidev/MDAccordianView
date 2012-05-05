@@ -32,25 +32,183 @@
 //
 
 #import "MDAccordianView.h"
+#import <QuartzCore/CoreAnimation.h>
 
-@implementation MDAccordianView
+@interface MDAccordianFoldView : UIView {
+    UIImageView *backgroundImage;
+    UIImageView *shadeImage;
+}
+
+@property (nonatomic, strong) UIImageView *backgroundImage;
+@property (nonatomic, strong) UIImageView *shadeImage;
+
+@end
+
+@implementation MDAccordianFoldView
+
+@synthesize backgroundImage, shadeImage;
 
 - (id)initWithFrame:(CGRect)frame
 {
-    self = [super initWithFrame:frame];
-    if (self) {
-        // Initialization code
+    if (self = [super initWithFrame:frame]) {
+        backgroundImage = [[UIImageView alloc] initWithFrame:self.bounds];
+        [self addSubview:backgroundImage];
+        backgroundImage.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        shadeImage = [[UIImageView alloc] initWithFrame:self.bounds];
+        [self addSubview:shadeImage];
+        shadeImage.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        
+        self.clipsToBounds = YES;
     }
     return self;
 }
 
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect
+@end
+
+@interface MDAccordianView ()
+
+@property (nonatomic, readwrite) NSUInteger numberOfFolds;
+@property (nonatomic, strong) UIImage *cachedImage;
+
+- (void)generateCachedImage;
+
+@end
+
+@implementation MDAccordianView
+
+@synthesize numberOfFolds, naturalSize, contentView, cachedImage;
+
+- (id)initWithFrame:(CGRect)frame
 {
-    // Drawing code
+    return [self initWithFrame:frame folds:2];
 }
-*/
+
+- (id)initWithFrame:(CGRect)frame folds:(NSUInteger)folds;
+{
+    if (self = [super initWithFrame:frame]) {
+        self.naturalSize = frame.size;
+        self.numberOfFolds = folds;
+        
+        CATransform3D perspectiveTransform = CATransform3DIdentity;
+        perspectiveTransform.m34 = 1.0 / -1000;
+        self.layer.sublayerTransform = perspectiveTransform;
+    }
+    return self;
+}
+
+- (void)setNumberOfFolds:(NSUInteger)folds
+{
+    numberOfFolds = folds;
+    
+    for (UIView *view in foldViews) {
+        [view removeFromSuperview];
+    }
+    
+    foldViews = [[NSMutableArray alloc] init];
+    
+    NSUInteger totalFolds = (numberOfFolds+1)*2;
+    CGFloat foldHeight = naturalSize.height/totalFolds;
+    
+    for (NSUInteger i = 0; i < totalFolds; i++) {
+        MDAccordianFoldView *fold = [[MDAccordianFoldView alloc] initWithFrame:CGRectMake(0, i*foldHeight, self.bounds.size.width, foldHeight)];
+        fold.backgroundColor = [UIColor greenColor];
+        fold.backgroundImage.frame = CGRectMake(0, -i*foldHeight, self.bounds.size.width, foldHeight);
+        [self insertSubview:fold atIndex:0];
+        [foldViews addObject:fold];
+        
+        fold.layer.anchorPoint = CGPointMake(0.5, i%2);
+    }
+    
+    [self generateCachedImage];
+    [self layoutIfNeeded];
+}
+
+- (UIView *)contentView
+{
+    if (!contentView) {
+        contentView = [[UIView alloc] initWithFrame:self.bounds];
+        [self addSubview:contentView];
+    }
+    
+    return contentView;
+}
+
+- (void)setContentView:(UIView *)aView
+{
+    [contentView removeFromSuperview];
+    contentView = aView;
+    [self addSubview:aView];
+}
+
+- (void)setFrame:(CGRect)frame
+{
+    [super setFrame:frame];
+    [self layoutSubviews];
+}
+
+- (void)layoutSubviews
+{
+    if (self.frame.size.height >= naturalSize.height) {
+        contentView.hidden = NO;
+        contentView.frame = self.bounds;
+        generatedImage = NO;
+    } else {
+        if (!generatedImage) {
+            generatedImage = YES;
+            
+            [self generateCachedImage];
+        }
+        
+        contentView.hidden = YES;
+        
+        BOOL flipped = NO;
+        
+        NSUInteger index = 0;
+        
+        for (MDAccordianFoldView *fold in foldViews) {
+            CGFloat oposite = self.frame.size.height/foldViews.count;
+            CGFloat hypotenus = fold.bounds.size.height;
+            CGFloat adjacent = sqrtf(hypotenus*hypotenus - ceilf(oposite+1)*ceilf(oposite+1));
+            
+            fold.layer.bounds = CGRectMake(0, 0, self.frame.size.width, fold.bounds.size.height);
+            
+            if (!flipped) {
+                fold.layer.transform = CATransform3DMakeRotation(-M_PI_2+atanf(oposite/adjacent), 1, 0, 0);
+                fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*floorf(index/2.)));
+            } else {
+                fold.layer.transform = CATransform3DMakeRotation(M_PI_2-atanf(oposite/adjacent), 1, 0, 0);
+                fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*ceilf(index/2.)));
+            }
+            
+            flipped = !flipped;
+            index++;
+        }
+    }
+}
+
+- (void)generateCachedImage
+{
+    CGRect oldRect = self.contentView.frame;
+    
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    
+    if (!CGSizeEqualToSize(oldRect.size, naturalSize)) {
+        self.contentView.frame = CGRectMake(oldRect.origin.x, oldRect.origin.y, naturalSize.width, naturalSize.height);
+    }
+    
+    UIGraphicsBeginImageContext(naturalSize);
+    [self.contentView.layer renderInContext:UIGraphicsGetCurrentContext()];
+    self.cachedImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    self.contentView.frame = oldRect;
+    
+    [CATransaction commit];
+    
+    for (MDAccordianFoldView *fold in foldViews) {
+        fold.backgroundImage.image = self.cachedImage;
+    }
+}
 
 @end
