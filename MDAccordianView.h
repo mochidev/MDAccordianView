@@ -43,12 +43,15 @@
     UIImage *cachedImage;
     
     BOOL generatedImage;
+    
+    CGFloat distanceFromScreen;
 }
 
-@property (nonatomic) CGSize naturalSize;
+@property (nonatomic) CGSize naturalSize; // the size at which the view will not be folded and be operational
+@property (nonatomic) CGFloat distanceFromScreen; // set to a positive value, in pixels, of the users face from the screen;
 @property (readonly, nonatomic) NSUInteger numberOfFolds;
 @property (nonatomic, strong) UIView *contentView; // don't add subviews directly!! set this or add to this instead
 
-- (id)initWithFrame:(CGRect)frame folds:(NSUInteger)folds;
+- (id)initWithFrame:(CGRect)frame folds:(NSUInteger)folds; // set the number of central peaks for the folding
 
 @end

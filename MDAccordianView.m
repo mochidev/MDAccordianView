@@ -81,24 +81,30 @@
 
 @implementation MDAccordianView
 
-@synthesize numberOfFolds, naturalSize, contentView, cachedImage;
+@synthesize numberOfFolds, naturalSize, contentView, cachedImage, distanceFromScreen;
 
 - (id)initWithFrame:(CGRect)frame
 {
-    return [self initWithFrame:frame folds:2];
+    return [self initWithFrame:frame folds:frame.size.height/200];
 }
 
 - (id)initWithFrame:(CGRect)frame folds:(NSUInteger)folds;
 {
     if (self = [super initWithFrame:frame]) {
+        numberOfFolds = folds;
         self.naturalSize = frame.size;
-        self.numberOfFolds = folds;
-        
-        CATransform3D perspectiveTransform = CATransform3DIdentity;
-        perspectiveTransform.m34 = 1.0 / -850;
-        self.layer.sublayerTransform = perspectiveTransform;
+        self.distanceFromScreen = 850;
     }
     return self;
+}
+
+- (void)setDistanceFromScreen:(CGFloat)aDistance
+{
+    distanceFromScreen = aDistance;
+    
+    CATransform3D perspectiveTransform = CATransform3DIdentity;
+    perspectiveTransform.m34 = 1.0 / -distanceFromScreen;
+    self.layer.sublayerTransform = perspectiveTransform;
 }
 
 - (void)setNumberOfFolds:(NSUInteger)folds
@@ -154,7 +160,14 @@
 {
     [contentView removeFromSuperview];
     contentView = aView;
-    [self addSubview:aView];
+    [self addSubview:contentView];
+}
+
+- (void)setNaturalSize:(CGSize)aSize;
+{
+    naturalSize = aSize;
+    
+    self.numberOfFolds = self.numberOfFolds;
 }
 
 - (void)setFrame:(CGRect)frame
@@ -203,7 +216,7 @@
                 fold.layer.transform = CATransform3DMakeRotation(M_PI_2-atanf(oposite/adjacent), 1, 0, 0);
                 fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*ceilf(index/2.)));
                 fold.shadeImage.alpha = 0.1*(1.-fraction);
-                fold.secondaryShadeImage.alpha = 0.5*(1.-2.*fraction);
+                fold.secondaryShadeImage.alpha = 0.7*(1.-2.*fraction);
             }
             
             flipped = !flipped;
@@ -223,7 +236,7 @@
         self.contentView.frame = CGRectMake(oldRect.origin.x, oldRect.origin.y, naturalSize.width, naturalSize.height);
     }
     
-    UIGraphicsBeginImageContext(naturalSize);
+    UIGraphicsBeginImageContextWithOptions(naturalSize, NO, 0);
     [self.contentView.layer renderInContext:UIGraphicsGetCurrentContext()];
     self.cachedImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
