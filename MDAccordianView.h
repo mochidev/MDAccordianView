@@ -54,4 +54,6 @@
 
 - (id)initWithFrame:(CGRect)frame folds:(NSUInteger)folds; // set the number of central peaks for the folding
 
+- (void)setFrame:(CGRect)frame animated:(BOOL)animated;
+
 @end

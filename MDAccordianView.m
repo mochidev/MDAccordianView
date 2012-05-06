@@ -54,6 +54,7 @@
 {
     if (self = [super initWithFrame:frame]) {
         backgroundImage = [[UIImageView alloc] initWithFrame:self.bounds];
+        backgroundImage.backgroundColor = [UIColor blackColor];
         [self addSubview:backgroundImage];
         backgroundImage.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         shadeImage = [[UIImageView alloc] initWithFrame:self.bounds];
@@ -176,6 +177,62 @@
     [self layoutSubviews];
 }
 
+- (void)setFrame:(CGRect)frame animated:(BOOL)animated
+{
+    if (animated) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        if (!generatedImage) {
+            generatedImage = YES;
+            
+            [self generateCachedImage];
+        }
+        
+        BOOL flipped = NO;
+        
+        NSUInteger index = 0;
+        
+        CGFloat fraction = fabsf(self.frame.size.height/naturalSize.height);
+        
+        NSUInteger totalFolds = (numberOfFolds+1)*2;
+        CGFloat foldHeight = naturalSize.height/totalFolds;
+        
+        for (MDAccordianFoldView *fold in foldViews) {
+            CGFloat oposite = self.frame.size.height/totalFolds;
+            CGFloat hypotenus = foldHeight;
+            CGFloat adjacent = sqrtf(hypotenus*hypotenus - oposite*oposite);
+            
+            if (adjacent < 0) adjacent = 0;
+            
+            fold.layer.bounds = CGRectMake(0, 0, self.frame.size.width, foldHeight+5);
+            
+            if (!flipped) {
+                fold.layer.transform = CATransform3DMakeRotation(-M_PI_2+atanf(oposite/adjacent), 1, 0, 0);
+                fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*floorf(index/2.)));
+                fold.shadeImage.alpha = 0.7*(1.-fraction);
+            } else {
+                fold.layer.transform = CATransform3DMakeRotation(M_PI_2-atanf(oposite/adjacent), 1, 0, 0);
+                fold.layer.position = CGPointMake(self.frame.size.width/2., roundf(2.*oposite*ceilf(index/2.)));
+                fold.shadeImage.alpha = 0.1*(1.-fraction);
+                fold.secondaryShadeImage.alpha = 0.7*(1.-2.*fraction);
+            }
+            
+            flipped = !flipped;
+            index++;
+        }
+        [CATransaction commit];
+        
+        [UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationCurveEaseInOut animations:^{
+            self.frame = frame;
+        } completion:NULL];
+    } else {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        self.frame = frame;
+        [CATransaction commit];
+    }
+}
+
 - (void)layoutSubviews
 {
     if (self.frame.size.height >= naturalSize.height) {
@@ -205,6 +262,8 @@
             CGFloat oposite = self.frame.size.height/totalFolds;
             CGFloat hypotenus = foldHeight;
             CGFloat adjacent = sqrtf(hypotenus*hypotenus - oposite*oposite);
+            
+            if (adjacent < 0) adjacent = 0;
             
             fold.layer.bounds = CGRectMake(0, 0, self.frame.size.width, foldHeight+5);
             
@@ -237,6 +296,10 @@
     }
     
     UIGraphicsBeginImageContextWithOptions(naturalSize, NO, 0);
+    if ([contentView isKindOfClass:[UIScrollView class]]) {
+        UIScrollView *scrollView = (UIScrollView *)contentView;
+        CGContextTranslateCTM(UIGraphicsGetCurrentContext(), -scrollView.contentOffset.x, -scrollView.contentOffset.y);
+    }
     [self.contentView.layer renderInContext:UIGraphicsGetCurrentContext()];
     self.cachedImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
