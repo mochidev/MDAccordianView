@@ -224,7 +224,10 @@
         
         [UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationCurveEaseInOut animations:^{
             self.frame = frame;
-        } completion:NULL];
+            contentView.hidden = YES;
+        } completion:^(BOOL finished) {
+            contentView.hidden = (self.frame.size.height < naturalSize.height);
+        }];
     } else {
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
