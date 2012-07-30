@@ -82,6 +82,14 @@
 
 @implementation MDAccordianView
 
++ (NSDictionary *)MDAboutControllerTextCreditDictionary
+{
+    if (self == [MDAccordianView class]) {
+        return [NSDictionary dictionaryWithObjectsAndKeys:@"Accordion transitions powered by MDAccordianView, available free on GitHub!", @"Text", @"https://github.com/mochidev/MDAccordianViewDemo", @"Link", nil];
+    }
+    return nil;
+}
+
 @synthesize numberOfFolds, naturalSize, contentView, cachedImage, distanceFromScreen;
 
 - (id)initWithFrame:(CGRect)frame
